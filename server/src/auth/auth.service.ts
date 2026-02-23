@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -18,19 +18,16 @@ export class AuthService {
     });
 
     if (user) {
-      // Пользователь существует - проверяем пароль
       if (await bcrypt.compare(password, user.password_hash)) {
         const { password_hash, ...result } = user.toJSON();
         return result;
       }
-      return null; // Неверный пароль
+      return null;
     } else {
-      // Пользователь не существует - создаем нового
       const saltRounds = 10;
       const password_hash = await bcrypt.hash(password, saltRounds);
       
-      // Определяем роль: nikita для пользователя Никита, user для остальных
-      const role = username === 'Никита' ? 'nikita' : 'user';
+      const role = username === 'admin' ? 'admin' : username === 'Никита' ? 'nikita' : 'user';
       
       const newUser = await this.userModel.create({
         login: username,
@@ -43,7 +40,7 @@ export class AuthService {
     }
   }
 
-  async login(user: IUserData) {
+  async login(user: IUserData): Promise<{ access_token: string }> {
     const payload = { username: user.login, sub: user.login, role: user.role };
     return {
       access_token: this.jwtService.sign(payload),

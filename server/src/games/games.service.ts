@@ -35,7 +35,6 @@ export class GamesService {
   }
 
   async getOrCreateScoreByUserAndRound(userId: string, roundUuid: string): Promise<Score> {
-
     const [scoreRecord] = await this.scoreModel.findOrCreate({
       where: {
         user: userId,
@@ -52,8 +51,8 @@ export class GamesService {
 
   async createRound(): Promise<Round> {
     const now = new Date();
-    const cooldownDuration = parseInt(process.env.COOLDOWN_DURATION || '60') * 1000; // Convert to milliseconds
-    const roundDuration = parseInt(process.env.ROUND_DURATION || '300') * 1000; // Convert to milliseconds
+    const cooldownDuration = parseInt(process.env.COOLDOWN_DURATION || '60') * 1000;
+    const roundDuration = parseInt(process.env.ROUND_DURATION || '300') * 1000;
 
     const startDatetime = new Date(now.getTime() + cooldownDuration);
     const endDatetime = new Date(now.getTime() + cooldownDuration + roundDuration);
@@ -68,38 +67,36 @@ export class GamesService {
     return round;
   }
 
-  scoreFromTapsCount(taps: number) {
+  scoreFromTapsCount(taps: number): number {
     return Math.floor(taps / 11) * 9 + taps;
   }
 
   async processTap(userId: string, roundUuid: string, role: string): Promise<{ score: number }> {
-    if (role != 'nikita') {
-      // Обновить запись в таблице score
-      await this.scoreModel.increment('taps', {
-        by: 1,
-        where: {
-          user: userId,
-          round: roundUuid,
-        },
-      });
+    const round = await this.roundModel.findByPk(roundUuid);
+    if (!round) {
+      throw new Error('Round is not found');
     }
 
-      const scoreRecord = await this.scoreModel.findOne({
-        where: {
-          user: userId,
-          round: roundUuid,
-        },
-      });
-      const score = this.scoreFromTapsCount(scoreRecord.taps);
+    const now = new Date();
+    if (now < round.start_datetime || now > round.end_datetime) {
+      throw new Error('Round is not active');
+    }
 
-      return { score };
+    const scoreRecord = await this.getOrCreateScoreByUserAndRound(userId, roundUuid);
+
+    if (role !== 'nikita') {
+      await scoreRecord.increment('taps', { by: 1 });
+      await scoreRecord.reload();
+    }
+
+    const score = this.scoreFromTapsCount(scoreRecord.taps);
+    return { score };
   }
 
   async getRoundSummary(roundUuid: string): Promise<{
     totalScore: number;
     bestPlayer: { username: string; score: number } | null;
   }> {
-    // Получаем все счета для раунда с информацией о пользователях
     const scores = await this.scoreModel.findAll({
       where: {
         round: roundUuid,
@@ -113,16 +110,14 @@ export class GamesService {
       ],
     });
 
-    // Суммируем все счета
     const totalScore = scores.reduce((sum, score) => sum + this.scoreFromTapsCount(score.taps), 0);
 
-    // Находим лучшего игрока
     let bestPlayer: { username: string; score: number } | null = null;
     if (scores.length > 0) {
-      const bestScore = scores.reduce((max, score) => { 
+      const bestScore = scores.reduce((max, score) => {
         const scorePoints = this.scoreFromTapsCount(score.taps);
         const maxPoints = this.scoreFromTapsCount(max.taps);
-        return scorePoints > maxPoints ? score : max;  
+        return scorePoints > maxPoints ? score : max;
       });
 
       bestPlayer = {

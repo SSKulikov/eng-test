@@ -37,7 +37,6 @@ const RoundPage: React.FC = () => {
 
 
   useEffect(() => {
-    console.log('needReloadOnFinish', needReloadOnFinish);
     if (!roundData) return;
 
     const isFinished = new Date() > new Date(roundData?.round.end_datetime);
@@ -175,7 +174,7 @@ const RoundPage: React.FC = () => {
         <button onClick={() => navigate('/')} className="back-button">
           ← Вернуться к списку раундов
         </button>
-        <h1>Раунд к={needReloadOnFinish} {round.uuid.slice(0, 8)}</h1>
+        <h1>Раунд {round.uuid.slice(0, 8)}</h1>
       </div>
 
       <div className="round-info">

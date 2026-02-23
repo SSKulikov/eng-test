@@ -57,10 +57,17 @@ export class GamesController {
     if (!body.uuid) {
       throw new BadRequestException('UUID is required');
     }
-
-    const result = await this.gamesService.processTap(req.user.sub, body.uuid, req.user.role);
-    return { message: 'tap performed', score: result.score };
+    try {
+      const result = await this.gamesService.processTap(req.user.sub, body.uuid, req.user.role);
+      return { message: 'tap performed', score: result.score };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if(message === 'Round is not found' || message === 'Round is not active'){
+      throw new BadRequestException(message)
+    }
+    throw error
   }
+}
 
   @Post('round')
   @UseGuards(AuthGuard('jwt'))

@@ -10,12 +10,11 @@ import * as bcrypt from 'bcrypt';
 export class DatabaseService implements OnModuleInit {
   constructor(@InjectConnection() private sequelize: Sequelize) {}
 
-  async onModuleInit() {
+  async onModuleInit(): Promise<void> {
     try {
       await this.sequelize.authenticate();
       console.log('Database connection established successfully.');
 
-      // Check if users table exists
       const tableExists = await this.checkTableExists('users');
       
       if (!tableExists) {
@@ -40,13 +39,11 @@ export class DatabaseService implements OnModuleInit {
     }
   }
 
-  private async initializeDatabase() {
+  private async initializeDatabase(): Promise<void> {
     try {
-      // Create all tables
       await this.sequelize.sync({ force: true });
       console.log('Database tables created successfully.');
 
-      // Create initial users
       await this.createInitialUsers();
       console.log('Initial users created successfully.');
     } catch (error) {
@@ -55,7 +52,7 @@ export class DatabaseService implements OnModuleInit {
     }
   }
 
-  private async createInitialUsers() {
+  private async createInitialUsers(): Promise<void> {
     const users = [
       {
         login: 'roma',
